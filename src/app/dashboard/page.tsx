@@ -1,39 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Diary } from '@/types/diary'
+import type { User } from '@supabase/supabase-js'
 
 export default function DashboardPage() {
   const [diaries, setDiaries] = useState<Diary[]>([])
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const router = useRouter()
 
-  useEffect(() => {
-    checkUser()
-  }, [])
-
-  const checkUser = async () => {
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser()
-      
-      if (error || !user) {
-        router.push('/login')
-        return
-      }
-      
-      setUser(user)
-      await fetchDiaries()
-    } catch (error) {
-      console.error('ユーザー確認エラー:', error)
-      router.push('/login')
-    }
-  }
-
-  const fetchDiaries = async () => {
+  const fetchDiaries = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('diaries')
@@ -50,7 +30,28 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  const checkUser = useCallback(async () => {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      
+      if (error || !user) {
+        router.push('/login')
+        return
+      }
+      
+      setUser(user)
+      await fetchDiaries()
+    } catch (error) {
+      console.error('ユーザー確認エラー:', error)
+      router.push('/login')
+    }
+  }, [router, fetchDiaries])
+
+  useEffect(() => {
+    checkUser()
+  }, [checkUser])
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)

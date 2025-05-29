@@ -1,23 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import type { User } from '@supabase/supabase-js'
 
 export default function CreatePage() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const router = useRouter()
 
-  useEffect(() => {
-    checkUser()
-  }, [])
-
-  const checkUser = async () => {
+  const checkUser = useCallback(async () => {
     try {
       const { data: { user }, error } = await supabase.auth.getUser()
       
@@ -31,7 +28,11 @@ export default function CreatePage() {
       console.error('ユーザー確認エラー:', error)
       router.push('/login')
     }
-  }
+  }, [router])
+
+  useEffect(() => {
+    checkUser()
+  }, [checkUser])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,12 +49,12 @@ export default function CreatePage() {
       // UUIDを生成
       const diaryId = crypto.randomUUID()
       
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('diaries')
         .insert([
           {
             id: diaryId,
-            user_id: user.id,
+            user_id: user?.id,
             title: title.trim(),
             content: content.trim(),
           }

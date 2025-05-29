@@ -55,7 +55,7 @@ export default function SignupPage() {
           router.push('/dashboard')
         }
       }
-    } catch (err) {
+    } catch {
       setError('アカウント作成に失敗しました')
     } finally {
       setLoading(false)

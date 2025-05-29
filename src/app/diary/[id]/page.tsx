@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -9,35 +9,13 @@ import { Diary } from '@/types/diary'
 export default function DiaryDetailPage() {
   const [diary, setDiary] = useState<Diary | null>(null)
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const router = useRouter()
   const params = useParams()
   const diaryId = params.id as string
 
-  useEffect(() => {
-    checkUserAndFetchDiary()
-  }, [diaryId])
-
-  const checkUserAndFetchDiary = async () => {
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser()
-      
-      if (error || !user) {
-        router.push('/login')
-        return
-      }
-      
-      setUser(user)
-      await fetchDiary()
-    } catch (error) {
-      console.error('ユーザー確認エラー:', error)
-      router.push('/login')
-    }
-  }
-
-  const fetchDiary = async () => {
+  const fetchDiary = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('diaries')
@@ -57,7 +35,27 @@ export default function DiaryDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [diaryId, router])
+
+  const checkUserAndFetchDiary = useCallback(async () => {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      
+      if (error || !user) {
+        router.push('/login')
+        return
+      }
+      
+      await fetchDiary()
+    } catch (error) {
+      console.error('ユーザー確認エラー:', error)
+      router.push('/login')
+    }
+  }, [router, fetchDiary])
+
+  useEffect(() => {
+    checkUserAndFetchDiary()
+  }, [checkUserAndFetchDiary])
 
   const handleDelete = async () => {
     setDeleting(true)

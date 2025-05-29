@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -12,34 +12,12 @@ export default function EditDiaryPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [user, setUser] = useState<any>(null)
   const [diary, setDiary] = useState<Diary | null>(null)
   const router = useRouter()
   const params = useParams()
   const diaryId = params.id as string
 
-  useEffect(() => {
-    checkUserAndFetchDiary()
-  }, [diaryId])
-
-  const checkUserAndFetchDiary = async () => {
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser()
-      
-      if (error || !user) {
-        router.push('/login')
-        return
-      }
-      
-      setUser(user)
-      await fetchDiary()
-    } catch (error) {
-      console.error('ユーザー確認エラー:', error)
-      router.push('/login')
-    }
-  }
-
-  const fetchDiary = async () => {
+  const fetchDiary = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('diaries')
@@ -61,7 +39,27 @@ export default function EditDiaryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [diaryId, router])
+
+  const checkUserAndFetchDiary = useCallback(async () => {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      
+      if (error || !user) {
+        router.push('/login')
+        return
+      }
+      
+      await fetchDiary()
+    } catch (error) {
+      console.error('ユーザー確認エラー:', error)
+      router.push('/login')
+    }
+  }, [router, fetchDiary])
+
+  useEffect(() => {
+    checkUserAndFetchDiary()
+  }, [checkUserAndFetchDiary])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,7 +73,7 @@ export default function EditDiaryPage() {
     }
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('diaries')
         .update({
           title: title.trim(),
